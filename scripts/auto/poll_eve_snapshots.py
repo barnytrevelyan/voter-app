@@ -6,6 +6,11 @@ site showed on the eve of the poll then lives with an independent archive, not w
 
 Anonymous Save Page Now refuses bursts, so captures are spaced out; a run that is cut short is picked up by the next
 run the same evening (the workflow runs twice), because pages already captured for this poll are skipped.
+
+GitHub runs scheduled workflows late, often by hours. A run that starts after midnight London time is still "the
+evening before" as far as the poll is concerned (polls open at 07:00), so until 07:00 London time the job also looks
+for polls on the current date. Before this, a run delayed past midnight BST looked a day too far ahead and every poll
+was missed (30 Sep and 7 Oct 2026).
 """
 import datetime, os, sys, time, urllib.parse
 sys.path.insert(0, os.path.dirname(__file__))
@@ -17,22 +22,42 @@ GAP = 25  # seconds between captures
 BUDGET = int(os.environ.get("SNAPSHOT_BUDGET", "40"))
 
 
-def london_today() -> datetime.date:
+POLLS_OPEN_HOUR = 7  # UK polling stations open at 07:00 local time
+
+
+def london_now(now: datetime.datetime | None = None) -> datetime.datetime:
     # Europe/London without a tz database: BST runs from the last Sunday of March to the last Sunday of October.
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = now or datetime.datetime.now(datetime.timezone.utc)
     y = now.year
     def last_sunday(month):
         d = datetime.date(y, month, 31 if month in (3, 10) else 30)
         return d - datetime.timedelta(days=(d.weekday() + 1) % 7)
     start = datetime.datetime.combine(last_sunday(3), datetime.time(1), datetime.timezone.utc)
     end = datetime.datetime.combine(last_sunday(10), datetime.time(1), datetime.timezone.utc)
-    return (now + datetime.timedelta(hours=1 if start <= now < end else 0)).date()
+    return now + datetime.timedelta(hours=1 if start <= now < end else 0)
+
+
+def london_today() -> datetime.date:
+    return london_now().date()
+
+
+def target_dates(now: datetime.datetime | None = None, days_ahead: int = 1) -> list[datetime.date]:
+    """The poll dates this run is the eve of: tomorrow, plus today while the polls have not yet opened.
+
+    A scheduled run that GitHub starts after midnight London time is still the evening before that day's poll."""
+    local = london_now(now)
+    dates = [local.date() + datetime.timedelta(days=days_ahead)]
+    if days_ahead == 1 and local.hour < POLLS_OPEN_HOUR:
+        dates.insert(0, local.date())
+    return dates
 
 
 def main():
     with job("eve-of-poll snapshots") as st:
-        target = (london_today() + datetime.timedelta(days=int(os.environ.get("DAYS_AHEAD", "1")))).isoformat()
-        ballots = select(f"/ballots?select=ballot_paper_id&poll_date=eq.{target}&archived=eq.false")
+        dates = target_dates(days_ahead=int(os.environ.get("DAYS_AHEAD", "1")))
+        target = " or ".join(d.isoformat() for d in dates)
+        ballots = select("/ballots?select=ballot_paper_id&archived=eq.false&poll_date=in.("
+                         + ",".join(d.isoformat() for d in dates) + ")&order=poll_date,ballot_paper_id")
         if not ballots:
             st["rows"] = 0; st["note"] = f"no polls on {target}"; return
         done = {r["page_url"] for r in select("/page_snapshots?select=page_url,archive_url&archive_url=not.is.null")

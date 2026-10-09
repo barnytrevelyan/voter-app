@@ -2,10 +2,13 @@ name: Eve-of-poll snapshots
 # The evening before each polling day, ask the Internet Archive to keep a copy of every ballot, comparison and
 # candidate page for that poll (scripts/auto/poll_eve_snapshots.py). Runs twice in the evening; the second run
 # picks up any pages the first could not capture. Does nothing on days before which there is no poll.
+# GitHub starts scheduled runs late, often by 2-5 hours (runs set for 19:35 UTC have started at 23:54 UTC), so the
+# times are early afternoon to keep every run on the right side of midnight London time; the script also tolerates
+# a run that slips past midnight (see target_dates in the script).
 on:
   schedule:
-    - cron: "5 17 * * *"   # 17:05 UTC
-    - cron: "35 19 * * *"  # 19:35 UTC
+    - cron: "5 14 * * *"   # 14:05 UTC (15:05 BST)
+    - cron: "35 16 * * *"  # 16:35 UTC (17:35 BST)
   workflow_dispatch:
 permissions:
   contents: read

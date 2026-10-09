@@ -18,7 +18,7 @@ const JOBS: { job: string; what: string; when: string; max: number }[] = [
   { job: "source watch", what: "Re-reads every quoted source, checks each quotation is still there, archives a copy", when: "Mondays", max: 8 * 24 },
   { job: "party publications", what: "New publications from party websites and GOV.UK, for review", when: "Mondays", max: 8 * 24 },
   { job: "release watch", what: "New editions of official datasets (council tax, deprivation, ONS lookups, emissions)", when: "Mondays", max: 8 * 24 },
-  { job: "eve-of-poll snapshots", what: "The evening before each poll, asks the Internet Archive to keep a copy of every ballot and candidate page", when: "Daily 17:05 and 19:35 UTC", max: 30 },
+  { job: "eve-of-poll snapshots", what: "The evening before each poll, asks the Internet Archive to keep a copy of every ballot and candidate page", when: "Daily 14:05 and 16:35 UTC", max: 30 },
   { job: "link check", what: "Checks every outbound link; a dead one is shown as its archived copy", when: "Sundays", max: 8 * 24 },
 ];
 
