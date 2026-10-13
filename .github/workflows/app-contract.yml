@@ -1,0 +1,56 @@
+name: Phone app contract
+# Keeps whatsittome.org and the phone app (mobile/) in step. Contract: lib/appApi.ts (v1: add fields only).
+# - checks: on every pull request and push touching the website or the app. Type-checks both, runs the unit tests
+#   (including tests/appApi.test.mjs) and lints the app. A red run means the change would break the app.
+# - live: daily (and on demand), calls the deployed /api/app/v1 routes and validates every reply. Not on push: the
+#   site is deployed by upload (netlify deploy), not from GitHub, so a push to main doesn't change the live site.
+on:
+  pull_request:
+    paths: ["lib/**", "app/api/app/**", "mobile/**", "tests/**", "package.json", ".github/workflows/app-contract.yml"]
+  push:
+    branches: [main]
+    paths: ["lib/**", "app/api/app/**", "mobile/**", "tests/**", "package.json", ".github/workflows/app-contract.yml"]
+  schedule:
+    - cron: "23 6 * * *"   # 06:23 UTC daily
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: app-contract-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: "package-lock.json" }
+      - name: Website type-check and unit tests
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npm test
+      - name: App install, type-check and lint
+        working-directory: mobile
+        run: |
+          npm ci
+          npx tsc --noEmit
+          CI=1 npx expo lint
+  live:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      # Runs scripts/app-contract.mjs and records the result in job_runs (shown on /status as "phone app contract").
+      - run: python scripts/auto/app_contract.py https://whatsittome.org

@@ -28,6 +28,15 @@ without the service key (see `scripts/auto/common.py`): use that for local testi
 - Before committing: `npx tsc --noEmit` and `npx next build` must pass. Commit with clear messages; push to a
   branch and open a PR unless told to push to main. Deploys to Netlify cost shared credits: batch them.
 
+## Phone app (mobile/)
+- Expo app for iOS and Android, ID org.whatsittome.app. It shows website content; it never holds content or rules.
+- Contract: lib/appApi.ts. Within /api/app/v1 only add optional fields; never rename, remove or change meaning.
+  A breaking change needs app/api/app/v2/ with v1 kept running. Installed apps stay on old versions for months.
+- Any change to lib/, app/api/app/ or mobile/ must pass: npx tsc --noEmit, npm test, and in mobile/
+  npm ci && npx tsc --noEmit && CI=1 npx expo lint. CI runs the same (.github/workflows/app-contract.yml).
+- After an app release, raise LATEST_APP_VERSION in lib/appApi.ts; raise MIN_APP_VERSION only when v1 can no
+  longer serve an old app.
+
 ## Current work
 Read `docs/STATUS.md` first: what is live, what is built but not merged, what is outstanding and what is blocked.
 The automation plan and its briefs are in `docs/automation/`; the catalogue of usable public data, with a suggested
