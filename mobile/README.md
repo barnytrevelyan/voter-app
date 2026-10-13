@@ -6,7 +6,7 @@ Plan and decisions: `APP-PLAN-2026-10-12.md` in the UKPolitcs folder (and the Cl
 ## Version 0.1.0 (first test build)
 
 One screen: postcode → the elections at that address → tap one to open the ballot page on whatsittome.org in an
-in-app browser. The postcode goes once to `POST https://whatsittome.org/api/app/elections` (app/api/app/elections/route.ts
+in-app browser. The postcode goes once to `POST https://whatsittome.org/api/app/v1/elections` (app/api/app/v1/elections/route.ts
 in the website) and is never stored. Purpose: get a real build into Google Play's closed test and TestFlight so the
 14-day tester clock can start while the native screens are built.
 
@@ -51,3 +51,14 @@ npx tsc --noEmit && CI=1 npx expo lint && npx expo-doctor
 
 Made from public/brand/mark-light.png (240 px), upscaled, so they are slightly soft. Before the public release, replace
 `assets/icon.png` and the `android-icon-*` files with a 1024 px export from the logo master.
+
+## Keeping the website and the app in step
+
+- The contract is `lib/appApi.ts` in the website: reply shapes, `APP_API_PATH` (/api/app/v1), `MIN_APP_VERSION` and
+  `LATEST_APP_VERSION`. The app imports its types only (`import type`), so no website code enters the app.
+- Within v1, only add optional fields. A breaking change means `app/api/app/v2/` with v1 kept running.
+- Content and data stay on the website, never in the app, so website updates reach the app with no store release.
+- On launch the app reads `/api/app/v1/meta`. If its version is below `minAppVersion` it shows a must-update notice and
+  stops searching; below `latestAppVersion` it shows a gentle update line. When a release goes out, raise
+  `LATEST_APP_VERSION` (and fill in `storeUrls` in app/api/app/v1/meta/route.ts once the store listings are public).
+- `.github/workflows/app-contract.yml` type-checks and tests both sides on every PR, and checks the live site daily.

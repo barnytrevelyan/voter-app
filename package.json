@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "rm -rf dist-test && tsc lib/household.ts lib/claims.ts lib/data.ts lib/parliament.ts lib/search.ts lib/personal.ts lib/feedbackForm.ts --outDir dist-test --module esnext --moduleResolution bundler --target es2022 --skipLibCheck >/dev/null 2>&1; node scripts/prep-tests.mjs && node --test tests/*.test.mjs"
+    "test": "rm -rf dist-test && tsc lib/household.ts lib/claims.ts lib/data.ts lib/parliament.ts lib/search.ts lib/personal.ts lib/feedbackForm.ts lib/appApi.ts --outDir dist-test --module esnext --moduleResolution bundler --target es2022 --skipLibCheck >/dev/null 2>&1; node scripts/prep-tests.mjs && node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2",

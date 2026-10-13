@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
-import { useState } from 'react';
+import Constants from 'expo-constants';
+import { useEffect, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
@@ -18,17 +19,19 @@ import {
 // Version 0: the first build for the Google Play closed test and TestFlight. Postcode -> the elections at that address,
 // from whatsittome.org/api/app/elections (Democracy Club + postcodes.io). The postcode is sent once, never stored.
 // Everything deeper opens the website in an in-app browser until the native screens are built (docs: APP-PLAN).
-const API = 'https://whatsittome.org/api/app/elections';
+// The reply shapes come from the website's contract file (type-only import: no website code enters the app bundle).
+// Content and data always come from the website, so updates there reach the app without a store release.
+import type { ElectionsResponse as Result, MetaResponse } from '../lib/appApi';
 
-type Election = {
-  ballot_paper_id: string;
-  election_date: string;
-  election_name: string;
-  post_label: string;
-  covered: boolean;
-  url: string | null;
-};
-type Result = { ok: true; outcode: string; elections: Election[]; placeUrl: string; source: string } | { ok: false; message: string };
+const API = 'https://whatsittome.org/api/app/v1';
+const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0';
+
+// Same rule as compareVersions in lib/appApi.ts (kept local so the bundle stays independent of website code).
+function older(a: string, b: string) {
+  const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) < (pb[i] ?? 0);
+  return false;
+}
 
 // Site palette (app/theme.css): latte paper, cocoa ink, raspberry accent; dark-mode values from the same file.
 const light = { paper: '#F7EFE6', panel: '#FFFFFF', ink: '#2B1B14', soft: '#4A3A31', accent: '#B8004F', onAccent: '#FFFFFF', line: '#E6D6C8' };
@@ -44,6 +47,15 @@ export default function App() {
   const [postcode, setPostcode] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
+  const [meta, setMeta] = useState<MetaResponse | null>(null);
+
+  // Ask the website which app versions it still serves. Offline or unreachable: carry on as normal.
+  useEffect(() => {
+    fetch(`${API}/meta`).then((r) => r.json()).then((m: MetaResponse) => { if (m?.ok) setMeta(m); }).catch(() => {});
+  }, []);
+  const mustUpdate = !!meta && older(APP_VERSION, meta.minAppVersion);
+  const canUpdate = !!meta && !mustUpdate && older(APP_VERSION, meta.latestAppVersion);
+  const storeUrl = meta ? (Platform.OS === 'ios' ? meta.storeUrls.ios : meta.storeUrls.android) : null;
 
   const open = (url: string) => WebBrowser.openBrowserAsync(url, { toolbarColor: c.paper, controlsColor: c.accent });
 
@@ -51,7 +63,7 @@ export default function App() {
     setBusy(true);
     setResult(null);
     try {
-      const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postcode }) });
+      const r = await fetch(`${API}/elections`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postcode }) });
       setResult((await r.json()) as Result);
     } catch {
       setResult({ ok: false, message: "We couldn't reach What's It To Me? just now. Check your connection and try again." });
@@ -66,6 +78,16 @@ export default function App() {
       <StatusBar style="auto" />
       <KeyboardAvoidingView style={s.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.page} keyboardShouldPersistTaps="handled">
+          {(mustUpdate || canUpdate) && meta && (
+            <Pressable
+              onPress={() => storeUrl && open(storeUrl)}
+              disabled={!storeUrl}
+              accessibilityRole={storeUrl ? 'link' : 'text'}
+              style={[s.notice, { backgroundColor: mustUpdate ? c.accent : c.panel, borderColor: c.accent }]}
+            >
+              <Text style={[s.noticeText, { color: mustUpdate ? c.onAccent : c.ink }]}>{meta.updateMessage}</Text>
+            </Pressable>
+          )}
           <Text style={[s.title, { color: c.ink }]} accessibilityRole="header">What’s It To Me?</Text>
           <Text style={[s.lede, { color: c.soft }]}>Politics, in your context. Find the elections where you live and what each result could mean for you.</Text>
 
@@ -86,7 +108,7 @@ export default function App() {
           />
           <Pressable
             onPress={look}
-            disabled={busy || !postcode.trim()}
+            disabled={busy || !postcode.trim() || mustUpdate}
             accessibilityRole="button"
             style={({ pressed }) => [s.button, { backgroundColor: c.accent, opacity: busy || !postcode.trim() ? 0.5 : pressed ? 0.85 : 1 }]}
           >
@@ -158,5 +180,7 @@ const s = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '700' },
   linkRow: { minHeight: 44, justifyContent: 'center' },
   link: { fontSize: 16, fontWeight: '700' },
+  notice: { borderWidth: 2, borderRadius: 12, padding: 14 },
+  noticeText: { fontSize: 16, lineHeight: 22, fontWeight: '700' },
   footer: { borderTopWidth: 1, marginTop: 24, paddingTop: 16, gap: 4 },
 });
