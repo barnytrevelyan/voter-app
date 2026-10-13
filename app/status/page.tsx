@@ -20,6 +20,7 @@ const JOBS: { job: string; what: string; when: string; max: number }[] = [
   { job: "release watch", what: "New editions of official datasets (council tax, deprivation, ONS lookups, emissions)", when: "Mondays", max: 8 * 24 },
   { job: "eve-of-poll snapshots", what: "The evening before each poll, asks the Internet Archive to keep a copy of every ballot and candidate page", when: "Daily 14:05 and 16:35 UTC", max: 30 },
   { job: "link check", what: "Checks every outbound link; a dead one is shown as its archived copy", when: "Sundays", max: 8 * 24 },
+  { job: "phone app contract", what: "Calls the phone app's routes on this site (/api/app/v1) and checks every reply still matches what installed apps expect", when: "Daily 06:23 UTC", max: 30 },
 ];
 
 export const metadata = { title: "Is this up to date?", description: "When the election data on this site was last refreshed, and whether the nightly update is working.", alternates: { canonical: "/status" } };

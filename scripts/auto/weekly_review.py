@@ -14,7 +14,7 @@ EXPECTED = {  # job name -> maximum age in hours before it counts as overdue
     "ballot ingest": 30, "schools (GIAS)": 30, "consultations": 30,
     "council register": 8 * 24, "climate declarations": 8 * 24, "waste sites": 8 * 24, "council meetings": 8 * 24, "motion outcomes": 8 * 24, "gazette notices": 8 * 24, "local plans (planning.data.gov.uk)": 8 * 24, "source watch": 8 * 24,
     "party publications": 8 * 24, "release watch": 8 * 24, "party funding (Electoral Commission)": 8 * 24,
-    "eve-of-poll snapshots": 30, "link check": 8 * 24,
+    "eve-of-poll snapshots": 30, "link check": 8 * 24, "phone app contract": 30,
 }
 
 
